@@ -59,19 +59,33 @@ void jack_log_function(int level, const char *message)
 
 static void jack_format_and_log(int level, const char *prefix, const char *fmt, va_list ap)
 {
-    char buffer[256];
-    size_t len;
+    const size_t buffer_len = 256 + 26; // `+ 26` to allow room for time string
+    char buffer[buffer_len];
+    size_t len = 0;
     jack_log_function_t log_function;
 
+    // insertion point.  Current end of buffer
+    char *cp = buffer;
+
+    // Put a time string at the start of the log message
+    time_t t = 0;
+    time(&t);
+    char time_buf[26];
+    ctime_r(&t, time_buf);
+    const size_t tb_len = strlen(time_buf);
+    time_buf[tb_len - 1] = ' '; // Trailing new line to space
+    strcpy(cp, time_buf);       // This is safe
+    cp += strlen(time_buf);
+
+
     if (prefix != NULL) {
-        len = strlen(prefix);
-        assert(len < 256);
-        memcpy(buffer, prefix, len);
-    } else {
-        len = 0;
+	len = strlen(prefix);
+	assert(len < buffer_len);
+	memcpy(buffer, prefix, len);
+	cp += len;
     }
 
-    vsnprintf(buffer + len, sizeof(buffer) - len, fmt, ap);
+    vsnprintf(cp, sizeof(buffer) - len, fmt, ap);
 
     log_function = (jack_log_function_t)jack_tls_get(JackGlobals::fKeyLogFunction);
 
